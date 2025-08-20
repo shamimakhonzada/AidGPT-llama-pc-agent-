@@ -399,28 +399,50 @@ function Message({ m, onEdit }: MessageProps) {
   );
 }
 
+interface Chat {
+  id: string;
+  title: string;
+  messages: MessageProps["m"][];
+}
+
 // --- Main App Component ---
 export default function App() {
-  const [messages, setMessages] = useState<MessageProps["m"][]>([]);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [files, setFiles] = useState<{ name: string; content: string }[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  const currentChat = chats.find((c) => c.id === currentChatId);
+  const messages = currentChat?.messages || [];
+
   useEffect(() => {
-    const sysMsg: MessageProps["m"] = {
-      id: crypto.randomUUID(),
-      role: "assistant",
-      text: "Hello! I'm your AI assistant. You can attach files to your messages for me to analyze.",
-    };
-    setMessages([sysMsg]);
+    const stored = localStorage.getItem("chats");
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      setChats(parsed.chats || []);
+      setCurrentChatId(parsed.currentId || parsed.chats[0]?.id || null);
+    } else {
+      startNewChat();
+    }
   }, []);
+
+  useEffect(() => {
+    if (chats.length > 0) {
+      localStorage.setItem(
+        "chats",
+        JSON.stringify({ chats, currentId: currentChatId })
+      );
+    }
+  }, [chats, currentChatId]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -437,8 +459,118 @@ export default function App() {
       text,
       files: files.length > 0 ? files : undefined,
     };
-    setMessages((s) => [...s, newMessage]);
+    setChats((prev) =>
+      prev.map((c) =>
+        c.id === currentChatId
+          ? { ...c, messages: [...c.messages, newMessage] }
+          : c
+      )
+    );
     return newMessage;
+  }
+
+  function updateMessageText(msgId: string, text: string) {
+    setChats((prev) =>
+      prev.map((c) =>
+        c.id === currentChatId
+          ? {
+              ...c,
+              messages: c.messages.map((m) =>
+                m.id === msgId ? { ...m, text } : m
+              ),
+            }
+          : c
+      )
+    );
+  }
+
+  function updateChatTitle(newTitle: string) {
+    setChats((prev) =>
+      prev.map((c) => (c.id === currentChatId ? { ...c, title: newTitle } : c))
+    );
+  }
+
+  async function streamResponse(
+    prompt: string,
+    files: { name: string; content: string }[]
+  ) {
+    try {
+      const response = await apiCall(prompt, files);
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("No response body");
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      const assistantMsg = pushMessage("assistant", "");
+      const msgId = assistantMsg.id;
+      let accumulated = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        while (true) {
+          const eventEnd = buffer.indexOf("\n\n");
+          if (eventEnd === -1) break;
+
+          const event = buffer.slice(0, eventEnd);
+          buffer = buffer.slice(eventEnd + 2);
+
+          const dataMatch = event.match(/^data: (.*)/s);
+          if (dataMatch) {
+            try {
+              const parsed = JSON.parse(dataMatch[1]);
+              if (parsed.type === "delta") {
+                const delta = parsed.data;
+                accumulated += delta;
+                updateMessageText(msgId, accumulated);
+              } else if (parsed.type === "complete") {
+                if (parsed.data.reply) {
+                  accumulated = parsed.data.reply;
+                  updateMessageText(msgId, accumulated);
+                }
+                if (parsed.data.results?.length) {
+                  const summary = parsed.data.results
+                    .map((r: any) => {
+                      const action = r.action?.action || r.action?.type || "?";
+                      const path = r.action?.path || "";
+                      const success =
+                        r.result?.ok === true || (r.result && !r.result.error);
+                      return `${action} ${
+                        path ? `-> ${truncate(path, 100)}` : ""
+                      }: ${
+                        success
+                          ? "✓ Success"
+                          : `✗ Error: ${r.result?.error || "Unknown"}`
+                      }`;
+                    })
+                    .join("\n");
+                  // Not appending summary as per original code
+                }
+              }
+            } catch (e) {
+              console.error("Parse error:", e);
+            }
+          }
+        }
+      }
+
+      setStatusMsg("Ready");
+    } catch (err: any) {
+      console.error(err);
+      pushMessage("assistant", `Sorry, I encountered an error: ${err.message}`);
+      setStatusMsg("Error");
+    } finally {
+      setLoading(false);
+      setTimeout(() => setStatusMsg(null), 3000);
+      inputRef.current?.focus();
+    }
   }
 
   const handleFileUpload = useCallback((fileList: FileList) => {
@@ -502,7 +634,6 @@ export default function App() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       handleFileUpload(e.target.files);
-      // Reset input to allow selecting same file again
       if (e.target) e.target.value = "";
     }
   };
@@ -511,138 +642,58 @@ export default function App() {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  async function sendPrompt(prompt: string) {
-    if (!prompt || loading) return;
+  async function sendPrompt() {
+    if ((!input.trim() && files.length === 0) || loading) return;
 
-    pushMessage("user", prompt, files);
-    setLoading(true);
-    setStatusMsg("Analyzing your request...");
-    setInput("");
+    const prompt = input;
     const filesToSend = [...files];
-    setFiles([]);
 
-    try {
-      const payload = {
-        prompt,
-        files: filesToSend,
-      };
-
-      const response = await fetch(API_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Network response was not ok: ${errorText}`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error("No response body");
-      }
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      const assistantMsg = pushMessage("assistant", "");
-      const msgId = assistantMsg.id;
-      let accumulated = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-
-        while (true) {
-          const eventEnd = buffer.indexOf("\n\n");
-          if (eventEnd === -1) break;
-
-          const event = buffer.slice(0, eventEnd);
-          buffer = buffer.slice(eventEnd + 2);
-
-          const dataMatch = event.match(/^data: (.*)/s);
-          if (dataMatch) {
-            try {
-              const parsed = JSON.parse(dataMatch[1]);
-              if (parsed.type === "delta") {
-                const delta = parsed.data;
-                accumulated += delta;
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === msgId ? { ...m, text: accumulated } : m
-                  )
-                );
-              } else if (parsed.type === "complete") {
-                // Optionally correct text if needed
-                if (parsed.data.reply) {
-                  accumulated = parsed.data.reply;
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === msgId ? { ...m, text: accumulated } : m
-                    )
-                  );
-                }
-                if (parsed.data.results?.length) {
-                  const summary = parsed.data.results
-                    .map((r: any) => {
-                      const action = r.action?.action || r.action?.type || "?";
-                      const path = r.action?.path || "";
-                      const success =
-                        r.result?.ok === true || (r.result && !r.result.error);
-                      return `${action} ${
-                        path ? `-> ${truncate(path, 100)}` : ""
-                      }: ${
-                        success
-                          ? "✓ Success"
-                          : `✗ Error: ${r.result?.error || "Unknown"}`
-                      }`;
-                    })
-                    .join("\n");
-                  // pushMessage("assistant", `Actions executed:\n${summary}`);
-                }
-              }
-            } catch (e) {
-              console.error("Parse error:", e);
-            }
-          }
-        }
-      }
-
-      setStatusMsg("Ready");
-    } catch (err: any) {
-      console.error(err);
-      pushMessage("assistant", `Sorry, I encountered an error: ${err.message}`);
-      setStatusMsg("Error");
-    } finally {
-      setLoading(false);
-      setTimeout(() => setStatusMsg(null), 3000);
-      inputRef.current?.focus();
+    if (messages.length === 0 && prompt.trim()) {
+      updateChatTitle(truncate(prompt, 30));
     }
+
+    pushMessage("user", prompt, filesToSend);
+    setInput("");
+    setFiles([]);
+    setLoading(true);
+    setStatusMsg("Analyzing...");
+    await streamResponse(prompt, filesToSend);
   }
 
   const handleFormSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (input.trim() || files.length > 0) {
-      sendPrompt(input);
-    }
+    sendPrompt();
   };
 
   const handleEditMessage = (id: string, newText: string) => {
-    setMessages((prev) =>
-      prev.map((msg) => (msg.id === id ? { ...msg, text: newText } : msg))
-    );
+    const editedMsg = messages.find((m) => m.id === id);
+    if (!editedMsg) return;
+
+    const editedFiles = editedMsg.files || [];
+
+    setChats((prev) => {
+      return prev.map((c) => {
+        if (c.id !== currentChatId) return c;
+        const msgs = [...c.messages];
+        const idx = msgs.findIndex((m) => m.id === id);
+        if (idx === -1) return c;
+        msgs[idx] = { ...msgs[idx], text: newText };
+        return { ...c, messages: msgs.slice(0, idx + 1) };
+      });
+    });
+
+    setLoading(true);
+    setStatusMsg("Analyzing...");
+    streamResponse(newText, editedFiles);
   };
 
   const startNewChat = () => {
-    const sysMsg: MessageProps["m"] = {
-      id: crypto.randomUUID(),
-      role: "assistant",
-      text: "Hello! I'm your AI assistant. You can attach files to your messages for me to analyze.",
-    };
-    setMessages([sysMsg]);
+    const newId = crypto.randomUUID();
+    setChats((prev) => [
+      { id: newId, title: "New Chat", messages: [] },
+      ...prev,
+    ]);
+    setCurrentChatId(newId);
     setSidebarOpen(false);
   };
 
@@ -654,19 +705,25 @@ export default function App() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } w-64 flex flex-col`}
       >
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-800">
-              Conversations
-            </h2>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-1 rounded-md hover:bg-gray-100"
-            >
-              <IconClose className="w-5 h-5" />
-            </button>
+        {/* Header */}
+        <header className="bg-gradient-to-r from-indigo-600 to-blue-500 text-white py-4 px-6 shadow-sm sticky top-0 z-10">
+          <div className="max-w-5xl mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="p-2 rounded-md hover:bg-indigo-700 lg:hidden"
+              >
+                <IconMenu className="w-5 h-5" />
+              </button>
+              <div>
+                <h1 className="text-xl font-bold">AidGPT</h1>
+              </div>
+            </div>
+            <div className="text-sm font-medium px-3 py-1 rounded-full bg-indigo-700/50">
+              {statusMsg || (loading ? <TypingIndicator /> : "Ready")}
+            </div>
           </div>
-        </div>
+        </header>
 
         <div className="flex-1 overflow-y-auto p-4">
           <button
@@ -677,13 +734,37 @@ export default function App() {
             New Chat
           </button>
 
-          <div className="mt-4 space-y-2">
-            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Current Chat
-            </div>
-            <div className="text-sm text-gray-600 p-2 bg-gray-50 rounded-lg">
-              {messages.length} messages
-            </div>
+          <div className="mt-4">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search chats..."
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <div className="mt-4 space-y-1 overflow-y-auto max-h-[calc(100vh-200px)]">
+            {chats
+              .filter((c) =>
+                c.title.toLowerCase().includes(searchQuery.toLowerCase())
+              )
+              .map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => {
+                    setCurrentChatId(c.id);
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${
+                    c.id === currentChatId
+                      ? "bg-indigo-100 text-indigo-900"
+                      : "hover:bg-gray-100"
+                  }`}
+                >
+                  {c.title}
+                </button>
+              ))}
           </div>
         </div>
 
@@ -702,32 +783,6 @@ export default function App() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 py-4 px-6 shadow-sm sticky top-0 z-10">
-          <div className="max-w-5xl mx-auto flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 rounded-md hover:bg-gray-100 lg:hidden"
-              >
-                <IconMenu className="w-5 h-5" />
-              </button>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-indigo-500 to-blue-600 flex items-center justify-center text-white">
-                <IconGPT className="w-5 h-5" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-800">AidGPT</h1>
-                <p className="text-xs text-gray-500">
-                  Your intelligent local file assistant
-                </p>
-              </div>
-            </div>
-            <div className="text-sm text-gray-500 font-medium px-3 py-1 rounded-full bg-gray-100">
-              {statusMsg || (loading ? <TypingIndicator /> : "Ready")}
-            </div>
-          </div>
-        </header>
-
         {/* Main Chat Area */}
         <main className="flex-1 overflow-hidden flex flex-col max-w-5xl w-full mx-auto px-4 py-6">
           <div
@@ -790,7 +845,6 @@ export default function App() {
                   ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200"
                   : "border-gray-300/70 bg-white"
               } shadow-lg transition-all duration-200 ${
-                // Only show focus ring when form is focused but not dragging
                 !isDragging
                   ? "focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20"
                   : ""
@@ -810,9 +864,7 @@ export default function App() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    if (input.trim() || files.length > 0) {
-                      sendPrompt(input);
-                    }
+                    sendPrompt();
                   }
                 }}
                 onInput={(e) => {
@@ -823,7 +875,7 @@ export default function App() {
                     200
                   )}px`;
                 }}
-                onFocus={() => setIsDragging(false)} // Clear drag state when typing
+                onFocus={() => setIsDragging(false)}
               />
 
               <div className="absolute right-3 bottom-3 flex items-center gap-2">
@@ -831,7 +883,7 @@ export default function App() {
                   type="button"
                   onClick={() => {
                     fileInputRef.current?.click();
-                    inputRef.current?.focus(); // Maintain focus after file selection
+                    inputRef.current?.focus();
                   }}
                   className="w-10 h-10 rounded-lg flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                   aria-label="Attach file"
