@@ -53,3 +53,10 @@ You can interact with AidGPT using natural language commands:
 
 { "prompt": "create a folder named 'project' on Desktop with a file main.py inside it" }
 
+
+
+
+
+<img width="1920" height="1200" alt="Screenshot from 2025-08-20 10-57-48" src="https://github.com/user-attachments/assets/ba4488db-58f8-48a5-8095-191c1b7b1ada" />
+
+
