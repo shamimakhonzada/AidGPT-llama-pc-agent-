@@ -1,6 +1,6 @@
 # AidGPT (llama-pc-agent)
 
-> 🚀 An AI-powered personal computer assistant built with **Ollama Llama 3.2**.  
+> An AI-powered personal computer assistant built with **Ollama Llama 3.2**.  
 > AidGPT can **create, read, update, and delete files**, manage folders, and even suggest commands — all through **natural language prompts**.
 >
 > <img width="1920" height="1200" alt="Screenshot from 2025-08-20 10-57-48" src="https://github.com/user-attachments/assets/4a57a8f4-befc-4f5e-bf0b-c6708b231fa6" />
@@ -8,17 +8,17 @@
 
 ---
 
-## ✨ Features
-- 📝 Create, read, update, and delete files & folders  
-- 📂 List directory contents dynamically  
-- ⚡ Intelligent file path resolution (no need to copy-paste full paths)  
-- 🤖 Powered by [Ollama](https://ollama.ai/) and **Llama 3.2**  
-- 🛠️ MERN-stack ready (Node.js backend + React frontend)  
-- 🔐 Secure sandbox for file operations  
+## Features
+-  Create, read, update, and delete files & folders  
+-  List directory contents dynamically  
+-  Intelligent file path resolution (no need to copy-paste full paths)  
+-  Powered by [Ollama](https://ollama.ai/) and **Llama 3.2**  
+-  MERN-stack ready (Node.js backend + React frontend)  
+-  Secure sandbox for file operations  
 
 ---
 
-## 📦 Tech Stack
+##  Tech Stack
 - **Backend** → Node.js (Express)  
 - **Frontend** → React (Vite)  
 - **AI Model** → Ollama Llama 3.2  
@@ -26,9 +26,9 @@
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
-### 1️⃣ Clone the repo
+### 1️ Clone the repo
 ```bash
 git clone https://github.com/your-username/llama-pc-agent.git
 cd llama-pc-agent
