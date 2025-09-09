@@ -2,42 +2,21 @@ import React, {
   useEffect,
   useState,
   useRef,
-  type FormEvent,
   useCallback,
 } from "react";
-import {
-  ArrowUp,
-  Paperclip,
-  Plus,
-  MessageSquare,
-  Search,
-  Copy,
-  Check,
-  Pencil,
-  X,
-  File as FileIcon,
-  Menu,
-  Loader2,
-  Bot,
-  Trash2,
-} from "lucide-react";
+import type { FormEvent } from "react";
+import Sidebar from "./components/layout/Sidebar";
+import Header from "./components/layout/Header";
+import ChatWindow from "./components/chat/ChatWindow";
+import InputBox from "./components/chat/InputBox";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 const API_ENDPOINT = API_BASE + "/api/ai/command";
 
+
 // --- Utility Functions ---
 function truncate(s: string, n = 60): string {
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 Bytes";
-  const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return (
-    parseFloat((bytes / Math.pow(k, i)).toFixed(1)).toString() + " " + sizes[i]
-  );
 }
 
 // --- API Communication ---
@@ -65,172 +44,18 @@ async function apiCall(
   return response;
 }
 
-// --- UI Components ---
 
-function TypingIndicator() {
-  return (
-    <div className="flex items-center space-x-1">
-      <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" />
-      <div
-        className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce"
-        style={{ animationDelay: "150ms" }}
-      />
-      <div
-        className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce"
-        style={{ animationDelay: "300ms" }}
-      />
-    </div>
-  );
-}
-
-interface MessageProps {
-  m: {
-    id: string;
-    role: "user" | "assistant";
-    text: string;
-    files?: { name: string; content: string }[];
-  };
-  onEdit?: (id: string, newText: string) => void;
-}
-
-function Message({ m, onEdit }: MessageProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(m.text);
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(m.text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
-  };
-
-  const handleSaveEdit = () => {
-    if (onEdit && editText.trim()) {
-      onEdit(m.id, editText);
-      setIsEditing(false);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditText(m.text);
-    setIsEditing(false);
-  };
-
-  return (
-    <div
-      className={`group flex w-full ${m.role === "user" ? "justify-end" : "justify-start"} animate-fade-in`}
-    >
-      <div
-        className={`flex max-w-[90%] items-start gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}
-      >
-        <div
-          className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${m.role === "user" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-600"}`}
-        >
-          {m.role === "user" ? (
-            <Bot size={18} />
-          ) : (
-            <Bot size={18} className="transform -scale-x-100" />
-          )}
-        </div>
-        <div className="relative">
-          <div
-            className={`p-4 rounded-2xl transition-all duration-300 ${m.role === "user" ? "bg-blue-500 text-white rounded-br-none" : "bg-white text-gray-900 rounded-bl-none border border-gray-200"}`}
-          >
-            {isEditing ? (
-              <div className="space-y-3">
-                <textarea
-                  value={editText}
-                  onChange={(e) => setEditText(e.target.value)}
-                  className="w-full p-3 text-sm bg-white/10 border border-blue-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
-                  rows={Math.min(editText.split('\n').length + 1, 10)}
-                />
-                <div className="flex gap-3 justify-end">
-                  <button
-                    onClick={handleCancelEdit}
-                    className="px-3 py-1.5 text-xs bg-gray-500/20 hover:bg-gray-500/30 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSaveEdit}
-                    className="px-3 py-1.5 text-xs bg-blue-500/30 hover:bg-blue-500/50 rounded-lg transition-colors"
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                {m.text}
-              </div>
-            )}
-
-            {m.files && m.files.length > 0 && (
-              <div
-                className={`mt-4 pt-3 border-t ${m.role === "user" ? "border-blue-300/50" : "border-gray-200"}`}
-              >
-                <div className="text-xs font-medium mb-2 opacity-80">
-                  Attachments:
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {m.files.map((file, index) => (
-                    <div
-                      key={index}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs shadow-sm ${m.role === "user" ? "bg-blue-400/50 text-blue-100" : "bg-gray-100 text-gray-700"}`}
-                    >
-                      <FileIcon className="w-4 h-4" />
-                      <span className="font-medium">
-                        {truncate(file.name, 20)}
-                      </span>
-                      <span className="opacity-70">
-                        {formatFileSize(file.content.length)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div
-            className={`absolute top-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${m.role === "user" ? "-left-10" : "-right-10"}`}
-          >
-            <button
-              onClick={handleCopy}
-              className="p-1.5 rounded-full bg-white/80 backdrop-blur-sm hover:bg-gray-200 transition text-gray-600"
-              title="Copy"
-            >
-              {copied ? (
-                <Check className="w-3.5 h-3.5 text-green-600" />
-              ) : (
-                <Copy className="w-3.5 h-3.5" />
-              )}
-            </button>
-
-            {m.role === "user" && onEdit && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="p-1.5 rounded-full bg-white/80 backdrop-blur-sm hover:bg-gray-200 transition text-gray-600"
-                title="Edit"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  files?: { name: string; content: string }[];
 }
 
 interface Chat {
   id: string;
   title: string;
-  messages: MessageProps["m"][]
+  messages: Message[];
 }
 
 export default function App() {
@@ -243,10 +68,8 @@ export default function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const currentChat = chats.find((c) => c.id === currentChatId);
   const messages = currentChat?.messages || [];
@@ -283,9 +106,6 @@ export default function App() {
     }
   }, [chats, currentChatId]);
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   const pushMessage = useCallback(
     (
@@ -402,7 +222,6 @@ export default function App() {
       } finally {
         setLoading(false);
         setTimeout(() => setStatusMsg(null), 3000);
-        inputRef.current?.focus();
       }
     },
     [pushMessage, updateMessageText]
@@ -465,12 +284,6 @@ export default function App() {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      handleFileUpload(e.target.files);
-      if (e.target) e.target.value = "";
-    }
-  };
 
   const removeFile = (index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
@@ -502,10 +315,6 @@ export default function App() {
     streamResponse,
   ]);
 
-  const handleFormSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    sendPrompt();
-  };
 
   const handleEditMessage = useCallback(
     (id: string, newText: string) => {
@@ -546,77 +355,27 @@ export default function App() {
   );
 
   return (
-    <div className="h-screen bg-gray-50 text-gray-900 font-sans antialiased flex">
-      {/* Sidebar */}
-      <div
-        className={`fixed inset-y-0 left-0 z-30 bg-gray-800 text-white transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} w-80 flex flex-col`}
-      >
-        <header className="p-4 border-b border-gray-700 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">AidGPT</h1>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-md hover:bg-gray-700 lg:hidden"
-          >
-            <Menu size={20} />
-          </button>
-        </header>
-
-        <div className="p-4 space-y-4">
-          <button
-            onClick={startNewChat}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus size={16} />
-            New Chat
-          </button>
-          <div className="relative">
-            <Search
-              size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search chats..."
-              className="w-full pl-9 pr-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500"
-            />
-          </div>
-        </div>
-
-        <nav className="flex-1 overflow-y-auto px-4 pb-4 space-y-1">
-          {chats
-            .filter((c) =>
-              c.title.toLowerCase().includes(searchQuery.toLowerCase())
-            )
-            .map((c) => (
-              <div key={c.id} className="group relative">
-                <button
-                  onClick={() => {
-                    setCurrentChatId(c.id);
-                    if (window.innerWidth < 1024) {
-                      setSidebarOpen(false);
-                    }
-                  }}
-                  className={`w-full text-left flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors ${c.id === currentChatId ? "bg-gray-700" : "hover:bg-gray-700/50"}`}
-                >
-                  <MessageSquare size={16} className="flex-shrink-0" />
-                  <span className="truncate flex-1">{c.title}</span>
-                </button>
-                <button
-                  onClick={() => deleteChat(c.id)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
-        </nav>
-
-        <div className="p-4 border-t border-gray-700 text-xs text-gray-400">
-          AidGPT Assistant
-        </div>
-      </div>
+    <div className={`h-screen font-sans antialiased flex transition-colors duration-300 ${
+      isDarkMode ? 'bg-[#343541] text-white' : 'bg-gray-50 text-gray-900'
+    }`}>
+      <Sidebar
+        chats={chats}
+        currentChatId={currentChatId}
+        searchQuery={searchQuery}
+        sidebarOpen={sidebarOpen}
+        isDarkMode={isDarkMode}
+        onNewChat={startNewChat}
+        onSelectChat={(id) => {
+          setCurrentChatId(id);
+          if (window.innerWidth < 1024) {
+            setSidebarOpen(false);
+          }
+        }}
+        onDeleteChat={deleteChat}
+        onSearchChange={setSearchQuery}
+        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        onToggleTheme={() => setIsDarkMode(!isDarkMode)}
+      />
 
       {/* Overlay for mobile */}
       {sidebarOpen && (
@@ -628,24 +387,13 @@ export default function App() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white/60 backdrop-blur-md border-b border-gray-200/80 sticky top-0 z-10 lg:hidden">
-          <div className="max-w-5xl mx-auto flex items-center justify-between p-2">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-md hover:bg-gray-100"
-            >
-              <Menu size={20} />
-            </button>
-            <div className="text-sm font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-600">
-              {statusMsg ||
-                (loading ? (
-                  <TypingIndicator />
-                ) : (
-                  <span className="text-green-600">Ready</span>
-                ))}
-            </div>
-          </div>
-        </header>
+        <Header
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen(true)}
+          statusMsg={statusMsg}
+          loading={loading}
+          isDarkMode={isDarkMode}
+        />
 
         <main
           className="flex-1 overflow-hidden flex flex-col"
@@ -653,125 +401,24 @@ export default function App() {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {messages.map((m) => (
-              <Message key={m.id} m={m} onEdit={handleEditMessage} />
-            ))}
-            {loading && messages[messages.length - 1]?.role !== "assistant" && (
-              <div className="flex justify-start">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                    <Bot
-                      size={18}
-                      className="text-gray-600 transform -scale-x-100"
-                    />
-                  </div>
-                  <div className="p-4 bg-white border border-gray-200 rounded-2xl rounded-bl-none">
-                    <TypingIndicator />
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
+          <ChatWindow
+            messages={messages}
+            loading={loading}
+            isDarkMode={isDarkMode}
+            onEditMessage={handleEditMessage}
+          />
 
-          <div className="px-6 pb-6 pt-4 bg-gradient-to-t from-gray-50 to-transparent">
-            {files.length > 0 && (
-              <div className="mb-3 flex flex-wrap gap-2">
-                {files.map((file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-2 bg-blue-100/80 border border-blue-200 rounded-lg pl-3 pr-2 py-1.5 text-sm"
-                  >
-                    <FileIcon className="w-4 h-4 text-blue-600" />
-                    <div className="max-w-[160px]">
-                      <div className="font-medium truncate text-blue-800">
-                        {truncate(file.name, 20)}
-                      </div>
-                      <div className="text-xs text-blue-600">
-                        {formatFileSize(file.content.length)}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeFile(index)}
-                      className="ml-1 text-blue-500 hover:text-blue-700 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <form
-              onSubmit={handleFormSubmit}
-              className={`relative transition-all duration-200 ${isDragging ? "ring-2 ring-blue-500 bg-blue-50" : ""}`}
-            >
-              <div className="relative flex items-end bg-white border border-gray-300/70 rounded-xl shadow-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20">
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Message AidGPT..."
-                  className="w-full p-4 pr-24 rounded-xl border-none focus:outline-none resize-none bg-transparent text-sm"
-                  rows={1}
-                  style={{ minHeight: "56px", maxHeight: "200px" }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      sendPrompt();
-                    }
-                  }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement;
-                    target.style.height = "auto";
-                    target.style.height = `${Math.min(
-                      target.scrollHeight,
-                      200
-                    )}px`;
-                  }}
-                />
-
-                <div className="absolute right-3 bottom-3 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-9 h-9 rounded-lg flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                    aria-label="Attach file"
-                  >
-                    <Paperclip size={18} />
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={loading || (!input.trim() && files.length === 0)}
-                    className="w-9 h-9 rounded-lg flex items-center justify-center transition-all bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
-                    aria-label="Send message"
-                  >
-                    {loading ? (
-                      <Loader2 size={18} className="animate-spin" />
-                    ) : (
-                      <ArrowUp size={18} />
-                    )}
-                  </button>
-                </div>
-              </div>
-            </form>
-            {isDragging && (
-              <div className="mt-2 text-sm text-center text-blue-600">
-                Drop files to attach them
-              </div>
-            )}
-             <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              multiple
-              className="hidden"
-              accept=".txt,.js,.ts,.jsx,.tsx,.json,.html,.css,.md,.py,.java,.c,.cpp,.cs,.php,.rb,.go,.rs,.swift,.kt"
-            />
-          </div>
+          <InputBox
+            input={input}
+            files={files}
+            loading={loading}
+            isDragging={isDragging}
+            isDarkMode={isDarkMode}
+            onInputChange={setInput}
+            onSend={sendPrompt}
+            onFileUpload={handleFileUpload}
+            onRemoveFile={removeFile}
+          />
         </main>
       </div>
     </div>
