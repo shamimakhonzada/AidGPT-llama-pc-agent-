@@ -1,6 +1,6 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { ArrowUp, Paperclip, Loader2, X, File as FileIcon } from "lucide-react";
+import { ArrowUp, Paperclip, Loader2, X, File as FileIcon, Mic, MicOff } from "lucide-react";
 
 interface FileData {
   name: string;
@@ -46,6 +46,8 @@ export default function InputBox({
 }: InputBoxProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [recognition, setRecognition] = useState<any>(null);
 
   const handleFormSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -59,9 +61,51 @@ export default function InputBox({
     }
   };
 
+  const startVoiceRecognition = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert('Voice recognition is not supported in this browser.');
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognitionInstance = new SpeechRecognition();
+
+    recognitionInstance.continuous = false;
+    recognitionInstance.interimResults = false;
+    recognitionInstance.lang = 'en-US';
+
+    recognitionInstance.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognitionInstance.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      onInputChange(input + transcript);
+    };
+
+    recognitionInstance.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionInstance.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+    };
+
+    setRecognition(recognitionInstance);
+    recognitionInstance.start();
+  };
+
+  const stopVoiceRecognition = () => {
+    if (recognition) {
+      recognition.stop();
+      setIsListening(false);
+    }
+  };
+
   return (
     <div className={`px-6 pb-6 pt-4 ${
-      isDarkMode ? 'bg-gradient-to-t from-[#343541] to-transparent' : 'bg-gradient-to-t from-gray-50 to-transparent'
+      isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
     }`}>
       {files.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2">
@@ -109,8 +153,8 @@ export default function InputBox({
       >
         <div className={`relative flex items-end rounded-2xl shadow-lg focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-colors ${
           isDarkMode
-            ? 'bg-[#40414f] border border-gray-600'
-            : 'bg-white border border-gray-200'
+            ? 'bg-gray-800 border border-gray-600'
+            : 'bg-white border border-gray-300'
         }`}>
           <textarea
             ref={inputRef}
@@ -141,6 +185,21 @@ export default function InputBox({
           />
 
           <div className="absolute right-3 bottom-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={isListening ? stopVoiceRecognition : startVoiceRecognition}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                isListening
+                  ? 'bg-red-500 text-white animate-pulse'
+                  : isDarkMode
+                    ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+              }`}
+              aria-label={isListening ? "Stop voice input" : "Start voice input"}
+            >
+              {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+            </button>
+
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
