@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { Copy, Check, Pencil, X, File as FileIcon, Bot } from "lucide-react";
+import { useState } from "react";
+import { Copy, Check, Pencil, File as FileIcon, Bot } from "lucide-react";
+import MarkdownMessage from "./MarkdownMessage";
 
 interface MessageProps {
   m: {
@@ -26,7 +27,11 @@ function formatFileSize(bytes: number): string {
   );
 }
 
-export default function MessageBubble({ m, onEdit, isDarkMode = false }: MessageProps) {
+export default function MessageBubble({
+  m,
+  onEdit,
+  isDarkMode = false,
+}: MessageProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(m.text);
   const [copied, setCopied] = useState(false);
@@ -69,20 +74,20 @@ export default function MessageBubble({ m, onEdit, isDarkMode = false }: Message
             m.role === "user"
               ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
               : isDarkMode
-                ? "bg-gradient-to-br from-gray-600 to-gray-700 text-gray-300"
-                : "bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600"
+              ? "bg-gradient-to-br from-gray-600 to-gray-700 text-gray-300"
+              : "bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600"
           }`}
         >
           <Bot size={20} />
         </div>
         <div className="relative flex-1">
           <div
-            className={`p-4 rounded-2xl shadow-sm transition-all duration-300 ${
+            className={`p-4 rounded-2xl shadow-lg transition-all duration-300 ${
               m.role === "user"
-                ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-br-md"
+                ? "bg-blue-600 text-white rounded-br-md shadow-blue-500/25"
                 : isDarkMode
-                  ? "bg-[#444654] text-white rounded-bl-md border border-gray-600"
-                  : "bg-white text-gray-900 rounded-bl-md border border-gray-100"
+                ? "bg-gray-700 text-white rounded-bl-md border border-gray-600 shadow-gray-900/50"
+                : "bg-white text-gray-900 rounded-bl-md border border-gray-200 shadow-gray-200/50"
             }`}
           >
             {isEditing ? (
@@ -91,7 +96,7 @@ export default function MessageBubble({ m, onEdit, isDarkMode = false }: Message
                   value={editText}
                   onChange={(e) => setEditText(e.target.value)}
                   className="w-full p-3 text-sm bg-white/10 border border-blue-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
-                  rows={Math.min(editText.split('\n').length + 1, 10)}
+                  rows={Math.min(editText.split("\n").length + 1, 10)}
                 />
                 <div className="flex gap-3 justify-end">
                   <button
@@ -109,17 +114,15 @@ export default function MessageBubble({ m, onEdit, isDarkMode = false }: Message
                 </div>
               </div>
             ) : (
-              <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                {m.text}
+              <div className="text-sm leading-relaxed">
+                <MarkdownMessage content={m.text} isDarkMode={isDarkMode} />
               </div>
             )}
 
             {m.files && m.files.length > 0 && (
               <div
                 className={`mt-4 pt-3 border-t ${
-                  m.role === "user"
-                    ? "border-blue-300/50"
-                    : "border-gray-200"
+                  m.role === "user" ? "border-blue-300/50" : "border-gray-200"
                 }`}
               >
                 <div className="text-xs font-medium mb-2 opacity-80">

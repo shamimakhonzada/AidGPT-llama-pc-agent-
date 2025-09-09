@@ -1,10 +1,4 @@
-import React, {
-  useEffect,
-  useState,
-  useRef,
-  useCallback,
-} from "react";
-import type { FormEvent } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Sidebar from "./components/layout/Sidebar";
 import Header from "./components/layout/Header";
 import ChatWindow from "./components/chat/ChatWindow";
@@ -12,7 +6,6 @@ import InputBox from "./components/chat/InputBox";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 const API_ENDPOINT = API_BASE + "/api/ai/command";
-
 
 // --- Utility Functions ---
 function truncate(s: string, n = 60): string {
@@ -44,7 +37,6 @@ async function apiCall(
   return response;
 }
 
-
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -70,7 +62,6 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDarkMode, setIsDarkMode] = useState(true);
 
-
   const currentChat = chats.find((c) => c.id === currentChatId);
   const messages = currentChat?.messages || [];
 
@@ -91,7 +82,9 @@ export default function App() {
     if (stored) {
       const parsed = JSON.parse(stored);
       setChats(parsed.chats || []);
-      setCurrentChatId(parsed.currentId || (parsed.chats && parsed.chats[0]?.id) || null);
+      setCurrentChatId(
+        parsed.currentId || (parsed.chats && parsed.chats[0]?.id) || null
+      );
     } else {
       startNewChat();
     }
@@ -105,7 +98,6 @@ export default function App() {
       );
     }
   }, [chats, currentChatId]);
-
 
   const pushMessage = useCallback(
     (
@@ -232,7 +224,8 @@ export default function App() {
     const promises = filesToProcess.map(
       (file) =>
         new Promise<{ name: string; content: string } | null>((resolve) => {
-          if (file.size > 2 * 1024 * 1024) { // 2MB limit
+          if (file.size > 2 * 1024 * 1024) {
+            // 2MB limit
             setStatusMsg(`File ${file.name} is too large (max 2MB)`);
             setTimeout(() => setStatusMsg(null), 3000);
             resolve(null);
@@ -284,7 +277,6 @@ export default function App() {
     }
   };
 
-
   const removeFile = (index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
@@ -314,7 +306,6 @@ export default function App() {
     pushMessage,
     streamResponse,
   ]);
-
 
   const handleEditMessage = useCallback(
     (id: string, newText: string) => {
@@ -355,9 +346,11 @@ export default function App() {
   );
 
   return (
-    <div className={`h-screen font-sans antialiased flex transition-colors duration-300 ${
-      isDarkMode ? 'bg-[#343541] text-white' : 'bg-gray-50 text-gray-900'
-    }`}>
+    <div
+      className={`h-screen font-sans antialiased flex transition-colors duration-300 ${
+        isDarkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"
+      }`}
+    >
       <Sidebar
         chats={chats}
         currentChatId={currentChatId}
