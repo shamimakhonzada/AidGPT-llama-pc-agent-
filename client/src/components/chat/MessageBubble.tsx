@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Copy, Check, Pencil, File as FileIcon, Bot } from "lucide-react";
 import MarkdownMessage from "./MarkdownMessage";
 
@@ -27,22 +27,26 @@ function formatFileSize(bytes: number): string {
   );
 }
 
-export default function MessageBubble({
+const MessageBubble = ({
   m,
   onEdit,
   isDarkMode = false,
-}: MessageProps) {
+}: MessageProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(m.text);
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(m.text);
       setCopied(true);
+      setCopyError(false);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error("Failed to copy:", err);
+      setCopyError(true);
+      setTimeout(() => setCopyError(false), 2000);
     }
   };
 
@@ -65,12 +69,12 @@ export default function MessageBubble({
       }`}
     >
       <div
-        className={`flex max-w-[85%] items-start gap-3 ${
+        className={`flex max-w-[90%] sm:max-w-[85%] md:max-w-[80%] items-start gap-2 sm:gap-3 ${
           m.role === "user" ? "flex-row-reverse" : ""
         }`}
       >
         <div
-          className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center shadow-sm ${
+          className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shadow-sm ${
             m.role === "user"
               ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
               : isDarkMode
@@ -78,11 +82,11 @@ export default function MessageBubble({
               : "bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600"
           }`}
         >
-          <Bot size={20} />
+          <Bot size={16} />
         </div>
         <div className="relative flex-1">
           <div
-            className={`p-4 rounded-2xl shadow-lg transition-all duration-300 ${
+            className={`p-3 sm:p-4 rounded-2xl shadow-lg transition-all duration-300 ${
               m.role === "user"
                 ? "bg-blue-600 text-white rounded-br-md shadow-blue-500/25"
                 : isDarkMode
@@ -121,26 +125,26 @@ export default function MessageBubble({
 
             {m.files && m.files.length > 0 && (
               <div
-                className={`mt-4 pt-3 border-t ${
+                className={`mt-3 sm:mt-4 pt-2 sm:pt-3 border-t ${
                   m.role === "user" ? "border-blue-300/50" : "border-gray-200"
                 }`}
               >
-                <div className="text-xs font-medium mb-2 opacity-80">
+                <div className="text-xs font-medium mb-1 sm:mb-2 opacity-80">
                   Attachments:
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1 sm:gap-2">
                   {m.files.map((file, index) => (
                     <div
                       key={index}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs shadow-sm ${
+                      className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-2 rounded-xl text-xs shadow-sm ${
                         m.role === "user"
                           ? "bg-blue-400/50 text-blue-100"
                           : "bg-gray-100 text-gray-700"
                       }`}
                     >
-                      <FileIcon className="w-4 h-4" />
-                      <span className="font-medium">
-                        {truncate(file.name, 20)}
+                      <FileIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="font-medium max-w-[100px] sm:max-w-[120px] truncate">
+                        {truncate(file.name, 15)}
                       </span>
                       <span className="opacity-70">
                         {formatFileSize(file.content.length)}
@@ -160,10 +164,12 @@ export default function MessageBubble({
             <button
               onClick={handleCopy}
               className="p-2 rounded-full bg-white/90 backdrop-blur-sm hover:bg-gray-200 transition text-gray-600 shadow-sm"
-              title="Copy"
+              title={copyError ? "Copy failed" : copied ? "Copied!" : "Copy"}
             >
               {copied ? (
                 <Check className="w-4 h-4 text-green-600" />
+              ) : copyError ? (
+                <Copy className="w-4 h-4 text-red-600" />
               ) : (
                 <Copy className="w-4 h-4" />
               )}
@@ -183,4 +189,6 @@ export default function MessageBubble({
       </div>
     </div>
   );
-}
+};
+
+export default memo(MessageBubble);

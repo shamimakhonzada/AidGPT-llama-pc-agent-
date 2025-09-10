@@ -1,3 +1,4 @@
+import React, { memo } from "react";
 import {
   Plus,
   MessageSquare,
@@ -39,27 +40,32 @@ interface SidebarProps {
 }
 
 function exportChat(chat: Chat) {
-  const chatData = {
-    title: chat.title,
-    messages: chat.messages,
-    exportedAt: new Date().toISOString(),
-  };
+  try {
+    const chatData = {
+      title: chat.title,
+      messages: chat.messages,
+      exportedAt: new Date().toISOString(),
+    };
 
-  const dataStr = JSON.stringify(chatData, null, 2);
-  const dataUri =
-    "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
+    const dataStr = JSON.stringify(chatData, null, 2);
+    const dataUri =
+      "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
 
-  const exportFileDefaultName = `${chat.title
-    .replace(/[^a-z0-9]/gi, "_")
-    .toLowerCase()}_chat.json`;
+    const exportFileDefaultName = `${chat.title
+      .replace(/[^a-z0-9]/gi, "_")
+      .toLowerCase()}_chat.json`;
 
-  const linkElement = document.createElement("a");
-  linkElement.setAttribute("href", dataUri);
-  linkElement.setAttribute("download", exportFileDefaultName);
-  linkElement.click();
+    const linkElement = document.createElement("a");
+    linkElement.setAttribute("href", dataUri);
+    linkElement.setAttribute("download", exportFileDefaultName);
+    linkElement.click();
+  } catch (error) {
+    console.error("Failed to export chat:", error);
+    alert("Failed to export chat. Please try again.");
+  }
 }
 
-export default function Sidebar({
+const Sidebar = ({
   chats,
   currentChatId,
   searchQuery,
@@ -71,10 +77,10 @@ export default function Sidebar({
   onSearchChange,
   onToggleSidebar,
   onToggleTheme,
-}: SidebarProps) {
+}: SidebarProps) => {
   return (
     <div
-      className={`fixed inset-y-0 left-0 z-30 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 w-80 flex flex-col ${
+      className={`fixed inset-y-0 left-0 z-30 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 w-64 md:w-72 lg:w-80 flex flex-col ${
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       } ${
         isDarkMode
@@ -83,7 +89,7 @@ export default function Sidebar({
       }`}
     >
       <header
-        className={`p-4 border-b flex items-center justify-between ${
+        className={`p-3 sm:p-4 border-b flex items-center justify-between ${
           isDarkMode ? "border-gray-600" : "border-gray-200"
         }`}
       >
@@ -109,7 +115,7 @@ export default function Sidebar({
         </div>
       </header>
 
-      <div className="p-4 space-y-4">
+      <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
         <button
           onClick={onNewChat}
           className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${
@@ -142,7 +148,7 @@ export default function Sidebar({
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-4 pb-4 space-y-1">
+      <nav className="flex-1 overflow-y-auto px-3 sm:px-4 pb-3 sm:pb-4 space-y-1">
         {chats
           .filter((c) =>
             c.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -195,7 +201,7 @@ export default function Sidebar({
       </nav>
 
       <div
-        className={`p-4 border-t text-xs ${
+        className={`p-3 sm:p-4 border-t text-xs ${
           isDarkMode
             ? "border-gray-600 text-gray-400"
             : "border-gray-200 text-gray-500"
@@ -205,4 +211,6 @@ export default function Sidebar({
       </div>
     </div>
   );
-}
+};
+
+export default memo(Sidebar);

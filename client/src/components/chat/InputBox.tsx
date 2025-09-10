@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, memo } from "react";
 import type { FormEvent } from "react";
 import { ArrowUp, Paperclip, Loader2, X, File as FileIcon, Mic, MicOff } from "lucide-react";
 
@@ -33,7 +33,7 @@ function formatFileSize(bytes: number): string {
   );
 }
 
-export default function InputBox({
+const InputBox = ({
   input,
   files,
   loading,
@@ -43,7 +43,7 @@ export default function InputBox({
   onSend,
   onFileUpload,
   onRemoveFile,
-}: InputBoxProps) {
+}: InputBoxProps) => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isListening, setIsListening] = useState(false);
@@ -56,7 +56,17 @@ export default function InputBox({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      onFileUpload(e.target.files);
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      const validFiles = Array.from(e.target.files).filter(file => {
+        if (file.size > maxSize) {
+          alert(`File ${file.name} is too large. Maximum size is 10MB.`);
+          return false;
+        }
+        return true;
+      });
+      if (validFiles.length > 0) {
+        onFileUpload(validFiles as any);
+      }
       if (e.target) e.target.value = "";
     }
   };
@@ -104,24 +114,24 @@ export default function InputBox({
   };
 
   return (
-    <div className={`px-6 pb-6 pt-4 ${
+    <div className={`px-4 sm:px-6 pb-4 sm:pb-6 pt-3 sm:pt-4 ${
       isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
     }`}>
       {files.length > 0 && (
-        <div className="mb-4 flex flex-wrap gap-2">
+        <div className="mb-3 sm:mb-4 flex flex-wrap gap-1 sm:gap-2">
           {files.map((file, index) => (
             <div
               key={index}
-              className={`flex items-center gap-2 rounded-lg pl-3 pr-2 py-2 text-sm shadow-sm ${
+              className={`flex items-center gap-1 sm:gap-2 rounded-lg pl-2 sm:pl-3 pr-1 sm:pr-2 py-1 sm:py-2 text-xs sm:text-sm shadow-sm ${
                 isDarkMode
                   ? 'bg-gray-700 border border-gray-600 text-gray-200'
                   : 'bg-blue-50 border border-blue-200 text-blue-800'
               }`}
             >
-              <FileIcon className={`w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-blue-600'}`} />
-              <div className="max-w-[160px]">
+              <FileIcon className={`w-3 h-3 sm:w-4 sm:h-4 ${isDarkMode ? 'text-gray-400' : 'text-blue-600'}`} />
+              <div className="max-w-[120px] sm:max-w-[160px]">
                 <div className="font-medium truncate">
-                  {truncate(file.name, 20)}
+                  {truncate(file.name, 15)}
                 </div>
                 <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-blue-600'}`}>
                   {formatFileSize(file.content.length)}
@@ -134,7 +144,7 @@ export default function InputBox({
                   isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-blue-500 hover:text-blue-700'
                 }`}
               >
-                <X className="w-4 h-4" />
+                <X className="w-3 h-3 sm:w-4 sm:h-4" />
               </button>
             </div>
           ))}
@@ -161,13 +171,13 @@ export default function InputBox({
             value={input}
             onChange={(e) => onInputChange(e.target.value)}
             placeholder="Message AidGPT..."
-            className={`w-full p-4 pr-24 rounded-2xl border-none focus:outline-none resize-none bg-transparent text-sm transition-colors ${
+            className={`w-full p-3 sm:p-4 pr-20 sm:pr-24 rounded-2xl border-none focus:outline-none resize-none bg-transparent text-sm transition-colors ${
               isDarkMode
                 ? 'text-white placeholder-gray-400'
                 : 'text-gray-900 placeholder-gray-500'
             }`}
             rows={1}
-            style={{ minHeight: "56px", maxHeight: "200px" }}
+            style={{ minHeight: "48px", maxHeight: "200px" }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -184,11 +194,11 @@ export default function InputBox({
             }}
           />
 
-          <div className="absolute right-3 bottom-3 flex items-center gap-2">
+          <div className="absolute right-2 sm:right-3 bottom-2 sm:bottom-3 flex items-center gap-1 sm:gap-2">
             <button
               type="button"
               onClick={isListening ? stopVoiceRecognition : startVoiceRecognition}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-colors ${
                 isListening
                   ? 'bg-red-500 text-white animate-pulse'
                   : isDarkMode
@@ -197,26 +207,26 @@ export default function InputBox({
               }`}
               aria-label={isListening ? "Stop voice input" : "Start voice input"}
             >
-              {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+              {isListening ? <MicOff size={18} /> : <Mic size={18} />}
             </button>
 
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-colors ${
                 isDarkMode
                   ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
               }`}
               aria-label="Attach file"
             >
-              <Paperclip size={20} />
+              <Paperclip size={18} />
             </button>
 
             <button
               type="submit"
               disabled={loading || (!input.trim() && files.length === 0)}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm ${
+              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all shadow-sm ${
                 loading || (!input.trim() && files.length === 0)
                   ? isDarkMode
                     ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
@@ -226,9 +236,9 @@ export default function InputBox({
               aria-label="Send message"
             >
               {loading ? (
-                <Loader2 size={20} className="animate-spin" />
+                <Loader2 size={18} className="animate-spin" />
               ) : (
-                <ArrowUp size={20} />
+                <ArrowUp size={18} />
               )}
             </button>
           </div>
@@ -249,4 +259,6 @@ export default function InputBox({
       />
     </div>
   );
-}
+};
+
+export default memo(InputBox);

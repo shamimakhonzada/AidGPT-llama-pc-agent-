@@ -1,7 +1,6 @@
+import React, { memo } from "react";
 import ReactMarkdown from "react-markdown";
-// @ts-ignore
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-// @ts-ignore
 import {
   oneDark,
   oneLight,
@@ -12,29 +11,27 @@ interface MarkdownMessageProps {
   isDarkMode: boolean;
 }
 
-export default function MarkdownMessage({
+const MarkdownMessage = ({
   content,
   isDarkMode,
-}: MarkdownMessageProps) {
+}: MarkdownMessageProps) => {
   return (
     <ReactMarkdown
       components={{
-        // @ts-ignore
-        code({ inline, className, children, ...props }) {
+        code({ inline, className, children, ...props }: any) {
           const match = /language-(\w+)/.exec(className || "");
           return !inline && match ? (
             <SyntaxHighlighter
-              // @ts-ignore
               style={isDarkMode ? oneDark : oneLight}
               language={match[1]}
               PreTag="div"
-              className="rounded-lg text-sm"
+              className="rounded-lg text-xs sm:text-sm"
             >
               {String(children).replace(/\n$/, "")}
             </SyntaxHighlighter>
           ) : (
             <code
-              className={`px-1.5 py-0.5 rounded text-sm font-mono ${
+              className={`px-1 py-0.5 sm:px-1.5 rounded text-xs sm:text-sm font-mono ${
                 isDarkMode
                   ? "bg-slate-700 text-slate-200"
                   : "bg-gray-100 text-gray-800"
@@ -45,37 +42,37 @@ export default function MarkdownMessage({
           );
         },
         p({ children }) {
-          return <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>;
+          return <p className="mb-2 sm:mb-3 last:mb-0 leading-relaxed">{children}</p>;
         },
         h1({ children }) {
           return (
-            <h1 className="text-2xl font-bold mb-4 mt-6 first:mt-0">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold mb-3 sm:mb-4 mt-4 sm:mt-5 md:mt-6 first:mt-0">
               {children}
             </h1>
           );
         },
         h2({ children }) {
           return (
-            <h2 className="text-xl font-bold mb-3 mt-5 first:mt-0">
+            <h2 className="text-base sm:text-lg md:text-xl font-bold mb-2 sm:mb-3 mt-3 sm:mt-4 md:mt-5 first:mt-0">
               {children}
             </h2>
           );
         },
         h3({ children }) {
           return (
-            <h3 className="text-lg font-bold mb-2 mt-4 first:mt-0">
+            <h3 className="text-sm sm:text-base md:text-lg font-bold mb-1 sm:mb-2 mt-2 sm:mt-3 md:mt-4 first:mt-0">
               {children}
             </h3>
           );
         },
         ul({ children }) {
           return (
-            <ul className="list-disc list-inside mb-3 space-y-1">{children}</ul>
+            <ul className="list-disc list-inside mb-2 sm:mb-3 space-y-0.5 sm:space-y-1">{children}</ul>
           );
         },
         ol({ children }) {
           return (
-            <ol className="list-decimal list-inside mb-3 space-y-1">
+            <ol className="list-decimal list-inside mb-2 sm:mb-3 space-y-0.5 sm:space-y-1">
               {children}
             </ol>
           );
@@ -86,7 +83,7 @@ export default function MarkdownMessage({
         blockquote({ children }) {
           return (
             <blockquote
-              className={`border-l-4 pl-4 my-4 italic ${
+              className={`border-l-4 pl-3 sm:pl-4 my-3 sm:my-4 italic ${
                 isDarkMode
                   ? "border-slate-600 text-slate-300"
                   : "border-gray-300 text-gray-600"
@@ -107,4 +104,6 @@ export default function MarkdownMessage({
       {content}
     </ReactMarkdown>
   );
-}
+};
+
+export default memo(MarkdownMessage);
