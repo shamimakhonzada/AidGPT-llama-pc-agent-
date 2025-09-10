@@ -1,3 +1,4 @@
+import React, { memo } from "react";
 import { Menu, Loader2, Bot } from "lucide-react";
 
 interface HeaderProps {
@@ -8,19 +9,19 @@ interface HeaderProps {
   isDarkMode: boolean;
 }
 
-export default function Header({
+const Header = ({
   onToggleSidebar,
   statusMsg,
   loading,
   isDarkMode,
-}: HeaderProps) {
+}: HeaderProps) => {
   return (
     <header
       className={`border-b sticky top-0 z-10 lg:hidden ${
         isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
       }`}
     >
-      <div className="max-w-5xl mx-auto flex items-center justify-between p-4">
+      <div className="max-w-4xl sm:max-w-5xl mx-auto flex items-center justify-between p-3 sm:p-4">
         <button
           onClick={onToggleSidebar}
           className={`p-2 rounded-md transition-colors ${
@@ -52,4 +53,6 @@ export default function Header({
       </div>
     </header>
   );
-}
+};
+
+export default memo(Header);

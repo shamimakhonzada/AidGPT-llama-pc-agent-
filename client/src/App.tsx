@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, memo } from "react";
 import Sidebar from "./components/layout/Sidebar";
 import Header from "./components/layout/Header";
 import ChatWindow from "./components/chat/ChatWindow";
@@ -50,7 +50,7 @@ interface Chat {
   messages: Message[];
 }
 
-export default function App() {
+const App = () => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [input, setInput] = useState("");
@@ -72,7 +72,7 @@ export default function App() {
       ...prev,
     ]);
     setCurrentChatId(newId);
-    if (window.innerWidth < 1024) {
+    if (window.innerWidth < 768) {
       setSidebarOpen(false);
     }
   }, []);
@@ -360,7 +360,7 @@ export default function App() {
         onNewChat={startNewChat}
         onSelectChat={(id) => {
           setCurrentChatId(id);
-          if (window.innerWidth < 1024) {
+          if (window.innerWidth < 768) {
             setSidebarOpen(false);
           }
         }}
@@ -416,4 +416,6 @@ export default function App() {
       </div>
     </div>
   );
-}
+};
+
+export default memo(App);
