@@ -84,7 +84,7 @@ const Sidebar = ({
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       } ${
         isDarkMode
-          ? "bg-gray-800 text-white border-r border-gray-700"
+          ? "bg-gray-900 text-white border-r border-gray-700"
           : "bg-white text-gray-900 border-r border-gray-200"
       }`}
     >

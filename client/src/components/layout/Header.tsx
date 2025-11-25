@@ -18,7 +18,7 @@ const Header = ({
   return (
     <header
       className={`border-b sticky top-0 z-10 lg:hidden ${
-        isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+        isDarkMode ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"
       }`}
     >
       <div className="max-w-4xl sm:max-w-5xl mx-auto flex items-center justify-between p-3 sm:p-4">

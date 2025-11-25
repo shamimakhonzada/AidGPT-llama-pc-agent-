@@ -194,7 +194,7 @@ const InputBox = ({
             }}
           />
 
-          <div className="absolute right-2 sm:right-3 bottom-2 sm:bottom-3 flex items-center gap-1 sm:gap-2">
+          <div className="absolute right-2 top-1.5 flex items-center gap-1 sm:gap-2">
             <button
               type="button"
               onClick={isListening ? stopVoiceRecognition : startVoiceRecognition}
