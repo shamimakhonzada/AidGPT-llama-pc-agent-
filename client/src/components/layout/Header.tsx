@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import { memo } from "react";
 import { Menu, Loader2, Bot } from "lucide-react";
 
 interface HeaderProps {
